@@ -1,0 +1,247 @@
+{
+  "edges": {
+    "start_to_opening": {
+      "source": "start_node",
+      "target": "opening",
+      "forward_condition": {
+        "type": "unconditional"
+      },
+      "backward_condition": null
+    },
+    "opening_to_triage": {
+      "source": "opening",
+      "target": "safety_triage",
+      "forward_condition": {
+        "label": "Safety concern",
+        "type": "llm",
+        "condition": "The caller reports or implies a crash, injury, roadside danger, unsafe location, panic, shock, ambulance, hospital, police emergency, or urgent danger."
+      },
+      "backward_condition": null
+    },
+    "opening_to_orientation": {
+      "source": "opening",
+      "target": "orientation",
+      "forward_condition": {
+        "label": "Claims intake",
+        "type": "llm",
+        "condition": "The caller wants to report an accident, vehicle damage, theft, glass breakage, wildlife loss, or auto insurance claim, and there is no immediate safety issue requiring triage."
+      },
+      "backward_condition": null
+    },
+    "triage_to_orientation": {
+      "source": "safety_triage",
+      "target": "orientation",
+      "forward_condition": {
+        "label": "Safe enough to continue",
+        "type": "llm",
+        "condition": "The caller is safe enough to continue the claim intake, or emergency guidance has already been given and the caller can answer basic questions."
+      },
+      "backward_condition": null
+    },
+    "orientation_to_narrative": {
+      "source": "orientation",
+      "target": "narrative",
+      "forward_condition": {
+        "label": "Identity started",
+        "type": "llm",
+        "condition": "The caller has provided enough initial identity context to start the claim narrative, such as policy number, name, date of birth, license plate, or confirmation that they do not have it available."
+      },
+      "backward_condition": null
+    },
+    "narrative_to_gap_fill": {
+      "source": "narrative",
+      "target": "gap_fill",
+      "forward_condition": {
+        "label": "Story understood",
+        "type": "llm",
+        "condition": "The caller has explained the accident or loss in their own words and the agent has enough context to ask missing structured follow-up questions."
+      },
+      "backward_condition": null
+    },
+    "gap_fill_to_wrap": {
+      "source": "gap_fill",
+      "target": "wrap_up",
+      "forward_condition": {
+        "label": "Essentials gathered",
+        "type": "llm",
+        "condition": "The essential claim details have been gathered or the caller cannot provide more: identity, date/time/location, loss type, vehicle status, injuries, other parties, police, damage, and callback details where relevant."
+      },
+      "backward_condition": null
+    },
+    "wrap_to_end": {
+      "source": "wrap_up",
+      "target": "end",
+      "forward_condition": {
+        "label": "Goodbye",
+        "type": "llm",
+        "condition": "The caller has clearly signaled they are done or has said goodbye."
+      },
+      "backward_condition": null
+    },
+    "opening_to_end": {
+      "source": "opening",
+      "target": "end",
+      "forward_condition": {
+        "label": "Goodbye",
+        "type": "llm",
+        "condition": "The caller has clearly signaled they want to end the call."
+      },
+      "backward_condition": null
+    }
+  },
+  "nodes": {
+    "start_node": {
+      "type": "start",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "edge_order": [
+        "start_to_opening"
+      ]
+    },
+    "opening": {
+      "type": "override_agent",
+      "label": "Open Neutral",
+      "position": {
+        "x": 0,
+        "y": 300
+      },
+      "edge_order": [
+        "opening_to_triage",
+        "opening_to_orientation",
+        "opening_to_end"
+      ],
+      "conversation_config": {
+        "agent": {
+          "prompt": {
+            "built_in_tools": {}
+          }
+        }
+      },
+      "additional_prompt": "Open as Stefanie from Meridian Mutual claims. Do not mention quotes, sales, transfers, or Pinnacle/Claire. Ask how you can help today. If they report an accident or damage, continue as the claims adjuster.",
+      "additional_knowledge_base": [],
+      "additional_tool_ids": [],
+      "auto_advance_after_first_response": false
+    },
+    "safety_triage": {
+      "type": "override_agent",
+      "label": "Safety Triage",
+      "position": {
+        "x": -420,
+        "y": 600
+      },
+      "edge_order": [
+        "triage_to_orientation"
+      ],
+      "conversation_config": {
+        "agent": {
+          "prompt": {
+            "built_in_tools": {}
+          }
+        }
+      },
+      "additional_prompt": "Prioritize safety. Ask if they are somewhere safe and whether anyone is hurt. If there is immediate danger or injury, tell them to call emergency services first. Keep questions short. Do not start routine policy intake until they are safe enough to continue.",
+      "additional_knowledge_base": [],
+      "additional_tool_ids": [],
+      "auto_advance_after_first_response": false
+    },
+    "orientation": {
+      "type": "override_agent",
+      "label": "Identity & Orientation",
+      "position": {
+        "x": 0,
+        "y": 900
+      },
+      "edge_order": [
+        "orientation_to_narrative"
+      ],
+      "conversation_config": {
+        "agent": {
+          "prompt": {
+            "built_in_tools": {}
+          }
+        }
+      },
+      "additional_prompt": "Softly transition into starting the claim. Ask for policy number, or name and date of birth, or license plate if policy number is unavailable. If a third party is calling, ask their relationship to the policyholder. Keep it natural and brief.",
+      "additional_knowledge_base": [],
+      "additional_tool_ids": [],
+      "auto_advance_after_first_response": false
+    },
+    "narrative": {
+      "type": "override_agent",
+      "label": "Narrative",
+      "position": {
+        "x": 0,
+        "y": 1200
+      },
+      "edge_order": [
+        "narrative_to_gap_fill"
+      ],
+      "conversation_config": {
+        "agent": {
+          "prompt": {
+            "built_in_tools": {}
+          }
+        }
+      },
+      "additional_prompt": "Let the caller tell the story in their own words. Ask: 'Tell me what happened, start wherever makes sense.' Use short backchannels. Ask only one clarifying question at a time. Do not sound like a checklist.",
+      "additional_knowledge_base": [],
+      "additional_tool_ids": [],
+      "auto_advance_after_first_response": false
+    },
+    "gap_fill": {
+      "type": "override_agent",
+      "label": "Gap Fill",
+      "position": {
+        "x": 0,
+        "y": 1500
+      },
+      "edge_order": [
+        "gap_fill_to_wrap"
+      ],
+      "conversation_config": {
+        "agent": {
+          "prompt": {
+            "built_in_tools": {}
+          }
+        }
+      },
+      "additional_prompt": "Ask only missing structured questions. Group related topics: date/time/location, vehicle and damage, injuries, other parties, police, witnesses, photos, drivable/towing, callback details. Skip questions already answered or irrelevant.",
+      "additional_knowledge_base": [],
+      "additional_tool_ids": [],
+      "auto_advance_after_first_response": false
+    },
+    "wrap_up": {
+      "type": "override_agent",
+      "label": "Wrap Up",
+      "position": {
+        "x": 0,
+        "y": 1800
+      },
+      "edge_order": [
+        "wrap_to_end"
+      ],
+      "conversation_config": {
+        "agent": {
+          "prompt": {
+            "built_in_tools": {}
+          }
+        }
+      },
+      "additional_prompt": "Briefly confirm the main next steps. Tell them what to send, what to expect, and that the claim will be reviewed. Do not invent a claim number. If they say goodbye or are done, end naturally.",
+      "additional_knowledge_base": [],
+      "additional_tool_ids": [],
+      "auto_advance_after_first_response": false
+    },
+    "end": {
+      "type": "end",
+      "position": {
+        "x": 0,
+        "y": 2100
+      },
+      "edge_order": []
+    }
+  },
+  "prevent_subagent_loops": false
+}

@@ -22,6 +22,7 @@ yarn-error.log*
 pnpm-debug.log*
 traces/
 transcripts/
+tmp*/
 
 # Runtime data
 *.pid

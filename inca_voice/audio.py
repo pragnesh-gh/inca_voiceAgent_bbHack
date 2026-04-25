@@ -73,4 +73,17 @@ def is_loud_mulaw(mulaw: bytes, *, threshold: int = 650) -> bool:
     if not mulaw:
         return False
     pcm = mulaw_to_pcm16_8k(mulaw)
+    return is_loud_pcm16(pcm, threshold=threshold)
+
+
+def is_loud_pcm16(pcm: bytes, *, threshold: int = 650) -> bool:
+    if not pcm:
+        return False
     return audioop.rms(pcm, SAMPLE_WIDTH) >= threshold
+
+
+def pcm16_duration_ms(pcm: bytes, *, sample_rate: int = TWILIO_RATE) -> float:
+    if not pcm:
+        return 0.0
+    samples = len(pcm) / SAMPLE_WIDTH
+    return samples / sample_rate * 1000

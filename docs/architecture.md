@@ -1,10 +1,25 @@
 # Architecture
 
-Target path: Twilio inbound phone call -> TwiML `<Connect><Stream>` -> Python WebSocket server -> audio processing/STT -> Gemini turn planner -> Gradium TTS -> Twilio outbound media frames.
+Primary target path: Twilio inbound phone call -> `/twilio/voice` -> ElevenLabs Register Twilio Call -> ElevenLabs-owned phone agent -> ElevenLabs post-call webhook -> local claims scribe.
 
-The phone path is Twilio Media Streams directly into the local Python server over WebSocket.
+The direct Twilio Media Streams path remains in the repo as fallback/debug infrastructure, but it is no longer the competition default.
 
 ## Runtime Shape
+
+Primary live-call runtime:
+
+```text
+caller phone
+  -> Twilio Programmable Voice
+  -> POST /twilio/voice
+  -> ElevenLabs register_call(...)
+  <- ElevenLabs TwiML
+  -> ElevenLabs handles ASR, turn-taking, interruption handling, TTS, and phone audio
+  -> POST /elevenlabs/post-call after the call
+  -> ClaimsScribe writes transcript, claim_state.json, and claim_note.md
+```
+
+Fallback local runtime:
 
 ```text
 caller phone
@@ -29,7 +44,8 @@ Twilio documents bidirectional streams as the mode where the WebSocket app recei
 
 - Input: Twilio voice webhook form body.
 - Output: XML TwiML.
-- Required behavior: return a bidirectional stream. Keep the tunnel URL private for the hackathon path; add `X-Twilio-Signature` validation before production exposure.
+- Primary behavior: when `USE_ELEVENLABS_REGISTER_CALL=1`, call ElevenLabs Register Twilio Calls and return the TwiML string from ElevenLabs.
+- Fallback behavior: return a bidirectional stream. Keep the tunnel URL private for the hackathon path; add `X-Twilio-Signature` validation before production exposure.
 
 ```xml
 <Response>
@@ -40,6 +56,12 @@ Twilio documents bidirectional streams as the mode where the WebSocket app recei
   </Connect>
 </Response>
 ```
+
+`POST /elevenlabs/post-call`
+
+- Input: ElevenLabs post-call webhook payload.
+- Output: JSON status.
+- Required behavior: verify signature when `ELEVENLABS_WEBHOOK_SECRET` is set, store timestamped transcript artifacts, and update the structured claim note.
 
 `WebSocket /twilio/media`
 
@@ -73,6 +95,10 @@ AICOUSTICS_MODEL_ID=quail-l-8khz
 GOOGLE_API_KEY=
 GEMINI_PRIMARY_MODEL=gemini-3-flash-preview
 GEMINI_FALLBACK_MODEL=gemini-2.5-flash
+USE_ELEVENLABS_REGISTER_CALL=1
+ELEVENLABS_API_KEY=
+ELEVENLABS_AGENT_ID=
+ELEVENLABS_WEBHOOK_SECRET=
 ```
 
 ## Audio Contracts

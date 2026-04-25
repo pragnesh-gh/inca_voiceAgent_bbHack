@@ -35,21 +35,33 @@ class GradiumTTS:
         self.trace = trace
 
     async def synthesize_ulaw(self, text: str) -> AsyncIterator[bytes]:
+        async for chunk in self._synthesize(text, output_format="ulaw_8000"):
+            yield chunk
+
+    async def synthesize_pcm16_8k(self, text: str) -> AsyncIterator[bytes]:
+        async for chunk in self._synthesize(text, output_format="pcm_8000"):
+            yield chunk
+
+    async def _synthesize(self, text: str, *, output_format: str) -> AsyncIterator[bytes]:
         if not self.settings.gradium_api_key:
             self.trace.error("gradium_tts", "GRADIUM_API_KEY is missing")
             return
 
         websocket = await _connect(self.settings.gradium_tts_url, self.settings.gradium_api_key)
         try:
+            setup: dict[str, Any] = {
+                "type": "setup",
+                "model_name": self.settings.gradium_tts_model,
+                "voice_id": self.settings.gradium_voice_id,
+                "output_format": output_format,
+            }
+            json_config: dict[str, Any] = {}
+            if self.settings.gradium_tts_padding_bonus is not None:
+                json_config["padding_bonus"] = self.settings.gradium_tts_padding_bonus
+            if json_config:
+                setup["json_config"] = json_config
             await websocket.send(
-                json.dumps(
-                    {
-                        "type": "setup",
-                        "model_name": self.settings.gradium_tts_model,
-                        "voice_id": self.settings.gradium_voice_id,
-                        "output_format": "ulaw_8000",
-                    }
-                )
+                json.dumps(setup)
             )
             ready = json.loads(await websocket.recv())
             if ready.get("type") != "ready":
@@ -102,15 +114,25 @@ class GradiumSTT:
             self.settings.gradium_asr_url,
             self.settings.gradium_api_key,
         )
-        await self._websocket.send(
-            json.dumps(
-                {
-                    "type": "setup",
-                    "model_name": self.settings.gradium_stt_model,
-                    "input_format": "pcm",
-                }
-            )
+        setup: dict[str, Any] = {
+            "type": "setup",
+            "model_name": self.settings.gradium_stt_model,
+            "input_format": "pcm",
+        }
+        json_config: dict[str, Any] = {}
+        language_hint = self.settings.gradium_stt_language_hint
+        if language_hint:
+            json_config["language"] = language_hint.split(",", 1)[0].strip()
+        if self.settings.gradium_stt_delay_in_frames:
+            json_config["delay_in_frames"] = self.settings.gradium_stt_delay_in_frames
+        if json_config:
+            setup["json_config"] = json_config
+        self.trace.event(
+            "gradium_stt_setup",
+            language_hint=language_hint,
+            json_config=json_config,
         )
+        await self._websocket.send(json.dumps(setup))
         self._receiver = asyncio.create_task(self._receive_loop())
         await asyncio.wait_for(self._ready.wait(), timeout=8)
 
@@ -119,6 +141,11 @@ class GradiumSTT:
             return
         mulaw = decode_mulaw_payload(payload)
         pcm_8k = mulaw_to_pcm16_8k(mulaw)
+        await self.send_pcm16_8k(pcm_8k)
+
+    async def send_pcm16_8k(self, pcm_8k: bytes) -> None:
+        if not self._websocket or not self._ready.is_set():
+            return
         pcm_8k = self.enhancer.enhance_pcm16_8k(pcm_8k)
         pcm_24k = self._resampler.convert(pcm_8k)
         self._buffer.extend(pcm_24k)

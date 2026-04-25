@@ -9,12 +9,13 @@ Build a phone-based voice agent for inbound auto-insurance claim calls. The jury
 ## Current Stack
 
 - Python 3.11
-- Twilio Programmable Voice Media Streams with `<Connect><Stream>`
-- FastAPI + Uvicorn WebSocket server
-- Gradium direct WebSocket STT and TTS
-- Optional ai-coustics standalone SDK enhancement before STT
+- Twilio Programmable Voice inbound webhook
+- ElevenLabs Conversational AI Register Twilio Calls API as the primary live-call runtime
+- FastAPI + Uvicorn webhook server
+- ElevenLabs post-call webhook for transcript handoff
 - Gemini via `google-genai`
 - JSONL traces and structured claim scribe output
+- Fallback only: local Twilio Media Streams, Pipecat serializer, Gradium STT/TTS, optional ai-coustics
 
 ## Run Path
 
@@ -31,12 +32,16 @@ Build a phone-based voice agent for inbound auto-insurance claim calls. The jury
    https://<public-host>/twilio/voice
    ```
 
-4. Call the Twilio number from a phone.
+4. Set `USE_ELEVENLABS_REGISTER_CALL=1`, `ELEVENLABS_API_KEY`, and `ELEVENLABS_AGENT_ID`.
+5. Call the Twilio number from a phone.
 
 ## Important Files
 
 - `agent.py` - starts the FastAPI app.
-- `inca_voice/twilio_app.py` - Twilio webhook and WebSocket media loop.
+- `inca_voice/twilio_app.py` - Twilio webhook, ElevenLabs register-call route, post-call webhook, and fallback media loop.
+- `inca_voice/elevenlabs_runtime.py` - ElevenLabs register-call and post-call transcript handling.
+- `inca_voice/pipecat_bridge.py` - adapter around Pipecat's Twilio serializer.
+- `inca_voice/turns.py` - user-turn aggregation and fragment filtering.
 - `inca_voice/gradium.py` - direct Gradium STT/TTS clients.
 - `inca_voice/gemini_agent.py` - Gemini reply generation with fallback model.
 - `inca_voice/scribe.py` - structured FNOL claim documentation.
@@ -53,3 +58,16 @@ Build a phone-based voice agent for inbound auto-insurance claim calls. The jury
 - Save objective call artifacts for every call.
 - Prefer proving the real phone loop before tuning prompts.
 - If a vendor API is flaky, degrade gracefully and log the failure.
+
+## Runtime Tuning
+
+- `USE_ELEVENLABS_REGISTER_CALL=1` makes `/twilio/voice` return ElevenLabs-provided TwiML for the live call.
+- `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` are required for the primary runtime.
+- `ELEVENLABS_WEBHOOK_SECRET` enables post-call webhook signature verification.
+- `USE_PIPECAT_RUNTIME=1` enables the Pipecat serializer bridge.
+- `USE_LEGACY_TWILIO_LOOP=1` bypasses Pipecat audio conversion if needed.
+- `TURN_MIN_WORDS`, `TURN_MIN_CHARS`, `TURN_SETTLE_MS`, and `TURN_MAX_WAIT_MS` tune when STT fragments become a committed caller turn.
+- `BARGE_IN_MIN_MS` controls how long caller speech must be detected before clearing buffered assistant audio.
+- `GRADIUM_STT_DELAY_IN_FRAMES` controls STT latency/accuracy tradeoff.
+- `GRADIUM_STT_LANGUAGE_HINT` defaults to `en,de`; Gradium accepts one primary language, so the runtime sends the first value and keeps the full hint in traces.
+- `GRADIUM_TTS_PADDING_BONUS` can be negative to make Gradium speak faster.

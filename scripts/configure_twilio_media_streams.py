@@ -129,7 +129,7 @@ def configure_voice_url(twilio: TwilioClient, phone_sid: str, voice_url: str) ->
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Point a Twilio phone number at the direct Media Streams voice agent."
+        description="Point a Twilio phone number at the Inca voice webhook."
     )
     parser.add_argument("--public-url", required=True, help="Tunnel/app URL, e.g. https://name.ngrok.app")
     parser.add_argument("--apply", action="store_true", help="Actually update Twilio")
@@ -147,7 +147,8 @@ def main() -> int:
         print("Plan")
         print(f"  Twilio number: {phone_number}")
         print(f"  VoiceUrl: {voice_url}")
-        print("  Runtime: direct Twilio Media Streams, no SIP trunk")
+        runtime = "ElevenLabs Register Call" if env_first("USE_ELEVENLABS_REGISTER_CALL") else "direct Twilio Media Streams fallback"
+        print(f"  Runtime: {runtime}, no SIP trunk")
         if not args.apply:
             print("Dry run only. Add --apply to update Twilio.")
             return 0

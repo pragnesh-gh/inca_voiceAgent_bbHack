@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from copy import deepcopy
@@ -64,18 +65,29 @@ class ClaimsScribe:
         self.state = empty_claim_state()
         self.turns: list[dict[str, Any]] = []
         self._client = genai.Client(api_key=settings.google_api_key) if settings.google_api_key else None
+        self._llm_task: asyncio.Task[None] | None = None
 
     async def record_turn(self, speaker: str, text: str) -> None:
         turn = {"id": len(self.turns) + 1, "speaker": speaker, "text": text}
         self.turns.append(turn)
         self._heuristic_update(turn)
         if self._client and speaker == "user":
-            await self._llm_update()
+            self._schedule_llm_update()
         self.trace.save_claim_state(self.state)
 
     async def close(self) -> None:
+        if self._llm_task and not self._llm_task.done():
+            try:
+                await asyncio.wait_for(self._llm_task, timeout=1.5)
+            except asyncio.TimeoutError:
+                self.trace.error("scribe_update", "timed out while closing")
         self.trace.save_claim_state(self.state)
         self.trace.save_claim_note(self.render_note())
+
+    def _schedule_llm_update(self) -> None:
+        if self._llm_task and not self._llm_task.done():
+            return
+        self._llm_task = asyncio.create_task(self._llm_update())
 
     def render_note(self) -> str:
         lines = ["# Claim Intake Note", ""]
