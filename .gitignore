@@ -27,6 +27,7 @@ transcripts/
 *.pid
 *.seed
 *.pid.lock
+models/
 
 # Coverage and test output
 coverage/

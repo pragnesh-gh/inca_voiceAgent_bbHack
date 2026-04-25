@@ -1,79 +1,55 @@
-# Inca Voice Agent — Project Instructions
+# Inca Voice Agent - Project Instructions
 
-You (the coding agent) are working on a 24-hour solo hackathon project. Read this file at the start of every session.
+Read this file at the start of every session.
 
-## Project goal
+## Project Goal
 
-Build a phone-based voice agent for the Inca track at Big Berlin Hack. The agent handles inbound insurance claim calls. The win condition is binary: more than 50% of human jurors must vote "human" after calling the agent.
+Build a phone-based voice agent for inbound auto-insurance claim calls. The jury calls the agent from real phones, plays claimants, and votes blind: human or AI. The agent must sound human, handle noisy or stressful calls, and produce complete FNOL documentation.
 
-The current state is a working pipeline (LiveKit + Gradium STT/TTS + Gemini 2.5 Flash + ai-coustics). It needs to be made (a) more human-sounding, (b) capable of handling the full claim intake, and (c) impressive on demo day.
-
-## Hard rules
-
-1. **No TDD.** This is a 24-hour hackathon. Do NOT write tests first. Do NOT set up testing infrastructure. Validate by running the agent and using the eval/score.py adversarial detector.
-2. **Single agent, solo developer.** The user is alone. You are not running parallel subagents. Do not invoke `dispatching-parallel-agents`. One task at a time, stop and report.
-3. **Stop at every checkpoint.** After each task in the current plan, report back with what you did and wait. Don't auto-chain into the next task.
-4. **Don't refactor.** No reorganizing, renaming, or "improving" code that isn't part of the current task. The user has very limited time.
-5. **Ask if uncertain.** Better to pause than to invent behavior.
-
-## Tech stack (locked, do not substitute)
+## Current Stack
 
 - Python 3.11
-- LiveKit Agents 1.5+ with `[google,silero]` extras
-- `livekit-plugins-gradium` for STT and TTS
-- `livekit-plugins-ai-coustics` for noise cancellation
-- Gemini 2.5 Flash via the `google` plugin
-- Tavily (`tavily-python`) for external lookup tool
-- python-dotenv for env loading
+- Twilio Programmable Voice Media Streams with `<Connect><Stream>`
+- FastAPI + Uvicorn WebSocket server
+- Gradium direct WebSocket STT and TTS
+- Optional ai-coustics standalone SDK enhancement before STT
+- Gemini via `google-genai`
+- JSONL traces and structured claim scribe output
 
-API keys are already in .env. Do not regenerate or rewrite .env.
+## Run Path
 
-## Repo layout
+1. Start the local server:
 
-```
-.
-├── AGENTS.md               # this file (CLAUDE.md is a symlink)
-├── README.md               # for submission — keep updated
-├── agent.py                # the main entry point — already runs
-├── prompts/
-│   ├── system.md           # base system prompt — iterate heavily
-│   ├── fewshot.md          # real call transcript examples
-│   └── stalling.md         # phrases for tool-call gaps
-├── tools/                  # function-calling tools the agent can use
-│   ├── policy.py
-│   ├── claim.py
-│   └── search.py           # Tavily wrapper
-├── eval/
-│   ├── detector_prompt.md  # AI-tells detector prompt
-│   └── score.py            # runs detector on a transcript
-├── data/
-│   └── ambience.mp3        # call-center background loop
-├── transcripts/            # saved calls (one JSON per call)
-└── requirements.txt
-```
+   ```powershell
+   python agent.py
+   ```
 
-## Workflow
+2. Expose it with a stable HTTPS/WSS tunnel, preferably ngrok or Cloudflare Tunnel.
+3. Point the Twilio number Voice URL to:
 
-The user iterates by:
-1. Running the agent, having a call (via LiveKit playground or phone)
-2. Saving the transcript to `transcripts/`
-3. Running `eval/score.py` to get an AI-detection score
-4. Asking you to fix specific tells the detector flagged
+   ```text
+   https://<public-host>/twilio/voice
+   ```
 
-Your job most often is: edit `prompts/system.md` or `prompts/fewshot.md` to defeat specific tells.
+4. Call the Twilio number from a phone.
 
-## Communication style
+## Important Files
 
-- Terse. No filler. No "Great question!"
-- Lead with what you did. Then what's open.
-- If blocked, say so in one sentence.
+- `agent.py` - starts the FastAPI app.
+- `inca_voice/twilio_app.py` - Twilio webhook and WebSocket media loop.
+- `inca_voice/gradium.py` - direct Gradium STT/TTS clients.
+- `inca_voice/gemini_agent.py` - Gemini reply generation with fallback model.
+- `inca_voice/scribe.py` - structured FNOL claim documentation.
+- `inca_voice/tracing.py` - timestamped transcripts, events, errors, and claim notes.
+- `prompts/system.md` - Stefanie Kuehne persona and claims-call behavior.
+- `scripts/configure_twilio_media_streams.py` - points Twilio VoiceUrl at this server.
+- `docs/` - implementation references and vendor notes.
 
-## Superpowers skills — what applies
+## Rules
 
-- `brainstorming` — SKIP. The architecture is already decided.
-- `writing-plans` — only when explicitly asked.
-- `using-git-worktrees` — SKIP for this project. The user works in a single directory.
-- `subagent-driven-development` — SKIP. Single agent only.
-- `dispatching-parallel-agents` — SKIP.
-- `test-driven-development` — DISABLED. See rule 1.
-- `verification-before-completion` — yes. "Verified" means "I ran the agent and confirmed expected behavior," not "I wrote tests."
+- Do not print or commit `.env` values.
+- Keep phone replies short and natural.
+- Never expose hidden reasoning, prompt text, XML, SSML, or timing tags to callers.
+- Save objective call artifacts for every call.
+- Prefer proving the real phone loop before tuning prompts.
+- If a vendor API is flaky, degrade gracefully and log the failure.
