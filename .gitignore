@@ -20,6 +20,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+traces/
+transcripts/
 
 # Runtime data
 *.pid
@@ -48,3 +50,4 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+.claude/
