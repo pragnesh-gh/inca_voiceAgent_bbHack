@@ -160,10 +160,14 @@ def _score_record(
         normalized_name = normalize(name)
         raw_parts = f"{record.get('first_name', '')} {record.get('last_name', '')}".split()
         parts = [normalize(part) for part in raw_parts if len(normalize(part)) > 2]
+        aliases = _record_name_aliases(record)
         hits = sum(1 for part in parts if part in normalized_name or part in normalize(name))
         if hits:
             score += min(hits, 2)
             reasons.append("name")
+        elif _matches_name_alias_or_fuzzy(normalized_name, parts, aliases):
+            score += 1
+            reasons.append("name_alias")
     return score, reasons
 
 
@@ -191,7 +195,7 @@ def _deductible_text(record: dict[str, str]) -> str:
 def _extract_name(text: str) -> str | None:
     patterns = (
         (r"\b(?:my name is|mein name ist)\s+([A-Za-zÄÖÜäöüß .'-]{2,80})", True),
-        (r"\b(?:i am|i'm|ich bin)\s+([A-Za-zÄÖÜäöüß .'-]{2,80})", False),
+        (r"\b(?:i am|i'm|ich bin)\s+([A-Za-zÄÖÜäöüß .'-]{2,80})", True),
     )
     for pattern, allow_single in patterns:
         for match in re.finditer(pattern, text, re.IGNORECASE):
@@ -210,7 +214,7 @@ def _looks_like_person_name(name: str, *, allow_single: bool) -> bool:
     words = [normalize(part) for part in name.split() if len(normalize(part)) > 1]
     if not words:
         return False
-    if words[0] in {"here", "calling", "safe", "fine", "back", "just", "actually", "trying", "looking", "report"}:
+    if words[0] in {"here", "calling", "safe", "fine", "back", "just", "actually", "trying", "looking", "report", "okay", "ok", "hurt", "injured", "home"}:
         return False
     return allow_single or len(words) >= 2
 
@@ -266,6 +270,49 @@ def _extract_plate(text: str) -> str | None:
 
 def normalize(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.casefold().replace("ü", "ue").replace("ö", "oe").replace("ä", "ae").replace("ß", "ss"))
+
+
+def _record_name_aliases(record: dict[str, str]) -> list[str]:
+    aliases = []
+    raw_aliases = record.get("name_aliases") or ""
+    for item in re.split(r"[;|]", raw_aliases):
+        alias = normalize(item)
+        if len(alias) > 2:
+            aliases.append(alias)
+    return aliases
+
+
+def _matches_name_alias_or_fuzzy(normalized_name: str, parts: list[str], aliases: list[str]) -> bool:
+    name_tokens = [normalize(token) for token in re.split(r"\s+", normalized_name) if len(normalize(token)) > 2]
+    candidates = [part for part in parts if len(part) >= 5] + [alias for alias in aliases if len(alias) >= 5]
+    for token in name_tokens or [normalized_name]:
+        if any(alias and (alias in token or token in alias) for alias in aliases):
+            return True
+        if any(_edit_distance_at_most(token, candidate, 2) for candidate in candidates):
+            return True
+    return False
+
+
+def _edit_distance_at_most(left: str, right: str, limit: int) -> bool:
+    if abs(len(left) - len(right)) > limit:
+        return False
+    previous = list(range(len(right) + 1))
+    for index_left, char_left in enumerate(left, start=1):
+        current = [index_left]
+        row_min = current[0]
+        for index_right, char_right in enumerate(right, start=1):
+            cost = 0 if char_left == char_right else 1
+            value = min(
+                previous[index_right] + 1,
+                current[index_right - 1] + 1,
+                previous[index_right - 1] + cost,
+            )
+            current.append(value)
+            row_min = min(row_min, value)
+        if row_min > limit:
+            return False
+        previous = current
+    return previous[-1] <= limit
 
 
 def _digits(value: str) -> str:

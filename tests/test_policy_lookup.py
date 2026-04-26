@@ -43,6 +43,18 @@ class PolicyLookupTests(unittest.TestCase):
         self.assertTrue(result["matched"])
         self.assertEqual(result["policyholder"]["policy_number"], "MM-KFZ-4831")
 
+    def test_matches_pragnesh_asr_aliases_with_date_of_birth(self):
+        for heard_name in ("Pratnesh", "Pregnesh", "Pragnish"):
+            with self.subTest(heard_name=heard_name):
+                result = find_policyholder_in_text(
+                    DB_PATH,
+                    f"I am {heard_name}. My date of birth is 26th October, 2001.",
+                )
+
+                self.assertTrue(result["matched"])
+                self.assertEqual(result["policyholder"]["full_name"], "Pragnesh Kumar Pallaprolu")
+                self.assertEqual(result["policyholder"]["policy_number"], "MM-KFZ-4831")
+
     def test_lookup_by_license_plate(self):
         result = lookup_policyholder(DB_PATH, license_plate="B-AM-1184")
 
