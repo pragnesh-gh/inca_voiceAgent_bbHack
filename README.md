@@ -19,7 +19,7 @@ Jurors call a real phone number, role-play an accident claimant, and vote blind 
 - Guides the caller through a human-first auto FNOL flow: safety, orientation, narrative, gap-fill, wrap.
 - Looks up demo policyholders through a local server tool backed by `data/mock_policyholders.csv`.
 - Optionally checks narrow live context such as weather, roadworks, traffic, closures, and local events through Tavily.
-- Uses seven claims-specific ElevenLabs guardrails to keep the call human, compliant, and in-role. Guardrails cover persona break, sycophantic agreement, fault attribution, bank/IBAN solicitation, repair authorization, internal flag disclosure, and premium/renewal/cancellation talk. Critical persona/internal-disclosure failures end the call; the rest block the response and retry with corrective guidance.
+- Uses ten claims-specific ElevenLabs guardrails to keep the call human, compliant, and in-role. Two streaming guardrails end the call on critical failures: internal flag disclosure and persona break. Eight post-response guardrails block and replace risky replies: fault attribution, bank/IBAN solicitation, repair authorization on call, premium/renewal/cancellation talk, third-party PII echo, invented identifiers, sycophantic agreement, and medical or treatment advice.
 - Stores timestamped traces, transcripts, errors, tool audits, claim state, Markdown notices, and branded redacted PDF notices.
 - Provides a transcript-based jury simulator and latency board for iteration.
 

@@ -87,19 +87,25 @@ Stefanie should not sound like a checklist. She should ask short questions, use 
 
 ## Guardrails
 
-The ElevenLabs agent has seven claims-specific guardrails configured. They are part of the demo, not just generic moderation:
+The ElevenLabs agent has ten claims-specific guardrails configured. They are part of the demo, not just generic moderation.
 
-- No persona break
-- No sycophantic agreement
-- No fault attribution
-- No bank or IBAN solicitation
-- No repair authorization on call
-- No internal flag disclosure
-- No premium, renewal, or cancellation talk
+Streaming guardrails that end the call immediately:
 
-The strongest guardrails, such as persona break or internal flag disclosure, can end the call immediately when triggered. The other guardrails block the unsafe response and force a retry with corrective guidance, so Stefanie stays in role and does not give legally or operationally risky answers.
+- No internal flag disclosure: avoids exposing fraud flags, SIU referrals, or other internal risk markers.
+- No persona break: avoids bot/self-disclosure language that would immediately break the human test.
 
-If a guardrail intentionally ends a stress-test call, that is expected behavior and not a telephony failure.
+Post-response guardrails that block and replace the risky reply:
+
+- No fault attribution: regenerate neutrally and document facts only.
+- No bank or IBAN solicitation: regenerate without asking for banking details.
+- No repair authorization on call: regenerate with written-confirmation language.
+- No premium, renewal, or cancellation talk: redirect to follow-up by the policy team.
+- No third-party PII echo: do not read unrelated third-party PII aloud.
+- No invented identifiers: do not fabricate claim numbers, policy numbers, case numbers, or internal IDs.
+- No sycophantic agreement: validate emotion, not coverage or liability.
+- No medical or treatment advice: redirect to medical care or emergency services.
+
+If a streaming guardrail intentionally ends a stress-test call, that is expected behavior and not a telephony failure. If a post-response guardrail triggers, ElevenLabs blocks the unsafe draft and retries with corrective guidance so Stefanie stays in role and avoids legally or operationally risky answers.
 
 ## What The Agent Should Collect
 
