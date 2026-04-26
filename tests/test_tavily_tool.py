@@ -8,7 +8,7 @@ from inca_voice.tavily_tool import is_allowed_claim_context_query, search_claim_
 from inca_voice.twilio_app import app
 
 
-def settings(api_key=None, token=None):
+def settings(api_key=None, token=None, tavily_search_url="https://api.tavily.com/search"):
     return Settings(
         twilio_phone_number="+493075679047",
         public_base_url=None,
@@ -41,7 +41,7 @@ def settings(api_key=None, token=None):
         scribe_final_timeout_secs=60.0,
         tavily_api_key=api_key,
         tavily_tool_token=token,
-        tavily_search_url="https://api.tavily.com/search",
+        tavily_search_url=tavily_search_url,
         tavily_max_results=3,
         turn_min_words=2,
         turn_min_chars=8,
@@ -92,6 +92,20 @@ class TavilyToolTests(unittest.TestCase):
         self.assertTrue(result["allowed"])
         self.assertEqual(result["answer"], "Light rain was reported nearby.")
         self.assertEqual(result["results"][0]["title"], "Berlin weather")
+
+    def test_rejects_non_tavily_search_url_before_fetch(self):
+        def fake_fetch(_req, _timeout):
+            raise AssertionError("fetch should not be called")
+
+        result = search_claim_context(
+            settings(api_key="tvly-test", tavily_search_url="http://127.0.0.1:8080/search"),
+            query="weather near A100 Berlin",
+            fetch=fake_fetch,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["allowed"])
+        self.assertEqual(result["uncertainty"], "search_url_not_allowed")
 
     def test_endpoint_requires_tool_token_when_configured(self):
         import os

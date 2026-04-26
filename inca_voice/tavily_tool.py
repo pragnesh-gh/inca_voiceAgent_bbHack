@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from typing import Any, Callable
-from urllib import error, request
+from urllib import error, parse, request
 
 from .config import Settings
 
@@ -61,6 +61,8 @@ BLOCKED_CONTEXT_TERMS = (
     "fraud",
 )
 
+ALLOWED_TAVILY_SEARCH_HOSTS = {"api.tavily.com"}
+
 
 def is_allowed_claim_context_query(query: str) -> bool:
     lower = query.casefold()
@@ -97,6 +99,15 @@ def search_claim_context(
             "answer": "Live context search is not configured.",
             "results": [],
             "uncertainty": "missing_tavily_api_key",
+        }
+    if not _is_allowed_tavily_search_url(settings.tavily_search_url):
+        return {
+            "ok": False,
+            "allowed": True,
+            "query": normalized_query,
+            "answer": "Live context search is not configured for an allowed Tavily endpoint.",
+            "results": [],
+            "uncertainty": "search_url_not_allowed",
         }
 
     payload = {
@@ -168,6 +179,11 @@ def summarize_results(results: list[dict[str, Any]]) -> str:
 def _fetch(req: request.Request, timeout: float) -> bytes:
     with request.urlopen(req, timeout=timeout) as response:
         return response.read()
+
+
+def _is_allowed_tavily_search_url(url: str) -> bool:
+    parsed = parse.urlparse(url)
+    return parsed.scheme == "https" and parsed.hostname in ALLOWED_TAVILY_SEARCH_HOSTS and parsed.path == "/search"
 
 
 def _error_result(query: str, message: str) -> dict[str, Any]:

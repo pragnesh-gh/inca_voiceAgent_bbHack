@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import shutil
 import statistics
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -285,10 +286,14 @@ def _write_latest_artifacts(trace_root: Path, artifacts: dict[str, str]) -> None
         "latency_board_json": "LATEST_LATENCY_BOARD.json",
         "latency_board_csv": "LATEST_LATENCY_BOARD.csv",
     }
+    root = trace_root.resolve()
     for key, latest_name in mapping.items():
         source = Path(artifacts[key])
         if source.exists():
-            (trace_root / latest_name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            source_resolved = source.resolve()
+            if not source_resolved.is_relative_to(root):
+                raise ValueError(f"artifact source is outside trace root: {source}")
+            shutil.copyfile(source_resolved, root / latest_name)
 
 
 def _append_history(path: Path, trace: Path, model: str, summary: dict[str, Any], latency: dict[str, Any]) -> None:

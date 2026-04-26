@@ -10,6 +10,8 @@ from inca_voice.jury_evaluator import (
     compute_latency_board,
     evaluate_trace,
     load_transcript_turns,
+    _write_evaluation_artifacts,
+    _write_latest_artifacts,
 )
 
 
@@ -108,6 +110,26 @@ class JuryEvaluatorTests(unittest.TestCase):
                 )
 
             self.assertFalse((trace / "jury_scores.json").exists())
+
+    def test_latest_artifact_copy_rejects_sources_outside_trace_root(self):
+        with workspace_tmp() as root:
+            trace = make_trace(root / "trace-a")
+            out = root / "trace-a"
+            result = sample_result("human", 0.82)
+            artifacts = _write_evaluation_artifacts(
+                out,
+                trace,
+                "gemini-2.5-pro",
+                [result],
+                aggregate_jury_results([result]),
+                compute_latency_board(trace),
+            )
+            outside = root.parent / f"escape-{uuid4().hex}.md"
+            artifacts["jury_summary_md"] = str(outside)
+
+            outside.write_text("escape attempt", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "outside trace root"):
+                _write_latest_artifacts(root, artifacts)
 
 
 def make_trace(path: Path) -> Path:
