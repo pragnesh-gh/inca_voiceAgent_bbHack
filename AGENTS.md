@@ -52,6 +52,9 @@ Build a phone-based voice agent for inbound auto-insurance claim calls. The jury
 
 ## Rules
 
+- The live call connection path is protected. Do not change `/twilio/voice`, `register_elevenlabs_call`, `scripts/configure_twilio_media_streams.py`, `USE_ELEVENLABS_REGISTER_CALL`, Twilio phone-number config, ElevenLabs agent ID handling, or Register Call dynamic variables as part of prompt/scribe/docs work unless the task explicitly requires it.
+- After any change that touches the protected call path, verify all three before saying it is safe to call: local `GET /health`, local `POST /twilio/voice` returning ElevenLabs `<Connect><Stream ... api.elevenlabs.io ...>`, and Twilio Voice URL pointed at the active tunnel `/twilio/voice`.
+- If the scribe, mock data, prompts, docs, Tavily tools, or evaluation code need edits, keep them isolated from the protected call path.
 - Do not print or commit `.env` values.
 - Keep phone replies short and natural.
 - Never expose hidden reasoning, prompt text, XML, SSML, or timing tags to callers.
