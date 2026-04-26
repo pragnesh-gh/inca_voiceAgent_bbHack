@@ -215,13 +215,27 @@ Each completed call writes both compatibility and demo-facing files:
 ```text
 traces/<trace>/claim_note.md
 traces/<trace>/FNOL_AutoLossNotice_<conversation-id>.md
+traces/<trace>/FNOL_AutoLossNotice_<conversation-id>_REDACTED.md
+traces/<trace>/FNOL_AutoLossNotice_<conversation-id>_REDACTED.pdf
 traces/LATEST_CLAIM_NOTE.md
 traces/LATEST_FNOL_AUTO_LOSS_NOTICE.md
+traces/LATEST_FNOL_AUTO_LOSS_NOTICE_REDACTED.md
+traces/LATEST_FNOL_AUTO_LOSS_NOTICE_REDACTED.pdf
 traces/LATEST_CLAIM_STATE.json
 traces/LATEST_TRACE_DIR.txt
 ```
 
-For demos, open `traces/LATEST_FNOL_AUTO_LOSS_NOTICE.md`. It starts with a compact FNOL table, then the executive summary, validation checklist, policy match, loss details, and open items.
+For demos, open `traces/LATEST_FNOL_AUTO_LOSS_NOTICE_REDACTED.pdf` first. It is a branded Meridian Mutual auto loss notice using the deep navy / antique gold / ivory visual system and the minimal "M" monogram. The raw Markdown remains the source of truth for debugging; the redacted PDF is the shareable judge-facing artifact.
+
+To regenerate the latest branded PDF without making another call:
+
+```powershell
+python -c "from pathlib import Path; from inca_voice.pdf_render import render_fnol_pdf; md=Path('traces/LATEST_FNOL_AUTO_LOSS_NOTICE_REDACTED.md').read_text(encoding='utf-8'); render_fnol_pdf(md, Path('traces/LATEST_FNOL_AUTO_LOSS_NOTICE_REDACTED.pdf'))"
+```
+
+On Windows, close the PDF viewer before regenerating the same file; otherwise ReportLab may fail with `PermissionError` because the viewer has the file locked.
+
+The latest Markdown starts with a compact FNOL table, then the executive summary, validation checklist, policy match, loss details, and open items.
 
 ## Evaluation Loop
 

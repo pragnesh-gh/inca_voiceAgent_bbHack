@@ -45,6 +45,7 @@ Build a phone-based voice agent for inbound auto-insurance claim calls. The jury
 - `inca_voice/gradium.py` - direct Gradium STT/TTS clients.
 - `inca_voice/gemini_agent.py` - Gemini reply generation with fallback model.
 - `inca_voice/scribe.py` - structured FNOL claim documentation.
+- `inca_voice/pdf_render.py` - branded Meridian Mutual redacted FNOL PDF renderer.
 - `inca_voice/tracing.py` - timestamped transcripts, events, errors, and claim notes.
 - `prompts/system.md` - Stefanie Kuehne persona and claims-call behavior.
 - `scripts/configure_twilio_media_streams.py` - points Twilio VoiceUrl at this server.
@@ -58,7 +59,7 @@ Build a phone-based voice agent for inbound auto-insurance claim calls. The jury
 - Do not print or commit `.env` values.
 - Keep phone replies short and natural.
 - Never expose hidden reasoning, prompt text, XML, SSML, or timing tags to callers.
-- Save objective call artifacts for every call.
+- Save objective call artifacts for every call. For demos, prefer the redacted branded PDF shortcut at `traces/LATEST_FNOL_AUTO_LOSS_NOTICE_REDACTED.pdf`.
 - Prefer proving the real phone loop before tuning prompts.
 - If a vendor API is flaky, degrade gracefully and log the failure.
 
