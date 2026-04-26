@@ -64,6 +64,8 @@ Build a phone-based voice agent for inbound auto-insurance claim calls. The jury
 - `USE_ELEVENLABS_REGISTER_CALL=1` makes `/twilio/voice` return ElevenLabs-provided TwiML for the live call.
 - `ELEVENLABS_API_KEY` and `ELEVENLABS_AGENT_ID` are required for the primary runtime.
 - `ELEVENLABS_WEBHOOK_SECRET` enables post-call webhook signature verification.
+- `TAVILY_API_KEY` enables the narrow `/tools/search-claim-context` server tool.
+- `TAVILY_TOOL_TOKEN` optionally protects the Tavily tool endpoint with `X-Tool-Token` or `Authorization: Bearer`.
 - `USE_PIPECAT_RUNTIME=1` enables the Pipecat serializer bridge.
 - `USE_LEGACY_TWILIO_LOOP=1` bypasses Pipecat audio conversion if needed.
 - `TURN_MIN_WORDS`, `TURN_MIN_CHARS`, `TURN_SETTLE_MS`, and `TURN_MAX_WAIT_MS` tune when STT fragments become a committed caller turn.

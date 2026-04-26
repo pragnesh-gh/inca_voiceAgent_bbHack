@@ -7,3 +7,4 @@ aic-sdk>=0.7
 numpy>=1.26
 pipecat-ai[websocket,gradium]>=1.0,<2.0
 elevenlabs>=2.44,<3.0
+reportlab>=4.2,<5.0

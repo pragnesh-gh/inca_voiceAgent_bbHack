@@ -1,5 +1,6 @@
 import os
 import unittest
+from uuid import uuid4
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -50,7 +51,7 @@ class ElevenLabsRuntimeTests(unittest.TestCase):
     def test_post_call_webhook_builds_claim_artifacts(self):
         import asyncio
 
-        trace_dir = os.path.join(os.getcwd(), "traces")
+        trace_dir = os.path.join(os.getcwd(), "tmp-test-traces", uuid4().hex)
         os.makedirs(trace_dir, exist_ok=True)
         settings = Settings(
             twilio_phone_number="+493075679047",
@@ -77,6 +78,15 @@ class ElevenLabsRuntimeTests(unittest.TestCase):
             elevenlabs_api_key=None,
             elevenlabs_agent_id=None,
             elevenlabs_webhook_secret=None,
+            policyholder_db_path="data/mock_policyholders.csv",
+            policy_lookup_tool_token=None,
+            scribe_final_model="gemini-2.5-pro",
+            scribe_fallback_model="gemini-2.5-flash",
+            scribe_final_timeout_secs=60.0,
+            tavily_api_key=None,
+            tavily_tool_token=None,
+            tavily_search_url="https://api.tavily.com/search",
+            tavily_max_results=3,
             turn_min_words=2,
             turn_min_chars=8,
             turn_settle_ms=700,
@@ -89,6 +99,7 @@ class ElevenLabsRuntimeTests(unittest.TestCase):
                 "conversation_id": "conv-123",
                 "transcript": [
                     {"role": "agent", "message": "Claims desk, Stefanie speaking."},
+                    {"role": "user", "message": "My name is Pragnesh and I'm born, um, October 26th, 2001."},
                     {"role": "user", "message": "I had an accident and my family is hurt."},
                 ],
             },
@@ -99,7 +110,27 @@ class ElevenLabsRuntimeTests(unittest.TestCase):
         self.assertEqual(result["conversation_id"], "conv-123")
         self.assertTrue(result["trace_dir"])
         self.assertIn("Safety", result["claim_state"])
+        self.assertIn("FNOL Auto Loss Notice", result["claim_note"])
+        self.assertIn("2001-10-26", result["claim_note"])
+        self.assertIn("MM-KFZ-4831", result["claim_note"])
         self.assertIn("hurt", result["claim_note"])
+        self.assertIn("quality", result)
+        self.assertIn("FNOL Validation Checklist", result["claim_note"])
+        self.assertIn("Missing: Whether caller/vehicle is somewhere safe", result["claim_note"])
+        self.assertIn("elevenlabs-postcall_conv-123", result["trace_dir"])
+        self.assertTrue(os.path.exists(os.path.join(trace_dir, "LATEST_CLAIM_NOTE.md")))
+        self.assertTrue(os.path.exists(os.path.join(trace_dir, "LATEST_FNOL_AUTO_LOSS_NOTICE.md")))
+        self.assertTrue(os.path.exists(os.path.join(trace_dir, "LATEST_FNOL_AUTO_LOSS_NOTICE_REDACTED.md")))
+        self.assertTrue(os.path.exists(os.path.join(trace_dir, "LATEST_FNOL_AUTO_LOSS_NOTICE_REDACTED.pdf")))
+        self.assertTrue(os.path.exists(os.path.join(trace_dir, "LATEST_CLAIM_STATE.json")))
+        self.assertTrue(os.path.exists(os.path.join(trace_dir, "LATEST_TRACE_DIR.txt")))
+        with open(os.path.join(trace_dir, "LATEST_FNOL_AUTO_LOSS_NOTICE_REDACTED.md"), encoding="utf-8") as handle:
+            redacted = handle.read()
+        self.assertNotIn("MM-KFZ-4831", redacted)
+        self.assertNotIn("2001-10-26", redacted)
+        self.assertIn("[POLICY]", redacted)
+        with open(os.path.join(trace_dir, "LATEST_TRACE_DIR.txt"), encoding="utf-8") as handle:
+            self.assertEqual(os.path.abspath(result["trace_dir"]), handle.read().strip())
 
 
 if __name__ == "__main__":

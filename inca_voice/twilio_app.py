@@ -31,7 +31,9 @@ from .gemini_agent import ClaimsResponder
 from .gradium import GradiumSTT, GradiumTTS
 from .noise import NoiseEnhancer
 from .pipecat_bridge import PipecatTwilioMediaCodec, pipecat_available
+from .policy_lookup import lookup_policyholder
 from .scribe import ClaimsScribe
+from .tavily_tool import search_claim_context
 from .tracing import CallTrace
 from .turns import CommittedTurn, TurnManager, TurnSettings
 
@@ -66,6 +68,9 @@ async def health() -> dict[str, Any]:
         "use_elevenlabs_register_call": settings.use_elevenlabs_register_call,
         "elevenlabs_key_set": bool(settings.elevenlabs_api_key),
         "elevenlabs_agent_id_set": bool(settings.elevenlabs_agent_id),
+        "policyholder_db_set": bool(settings.policyholder_db_path),
+        "tavily_key_set": bool(settings.tavily_api_key),
+        "tavily_tool_token_set": bool(settings.tavily_tool_token),
     }
 
 
@@ -117,10 +122,72 @@ async def elevenlabs_post_call(request: Request) -> JSONResponse:
     signature = request.headers.get("ElevenLabs-Signature")
     try:
         payload = verify_or_parse_elevenlabs_webhook(raw_body, signature, settings)
-        result = await build_claim_from_post_call_webhook(payload, settings)
-        return JSONResponse({"ok": True, "conversation_id": result["conversation_id"], "trace_dir": result["trace_dir"]})
+        result = await build_claim_from_post_call_webhook(payload, settings, final_mode="background")
+        return JSONResponse(
+            {
+                "ok": True,
+                "conversation_id": result["conversation_id"],
+                "trace_dir": result["trace_dir"],
+                "quality": result.get("quality", {}),
+            }
+        )
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+
+@app.post("/tools/lookup-policyholder")
+async def lookup_policyholder_tool(request: Request) -> JSONResponse:
+    settings = load_settings()
+    if settings.policy_lookup_tool_token:
+        token = request.headers.get("X-Tool-Token")
+        auth = request.headers.get("Authorization", "")
+        expected = f"Bearer {settings.policy_lookup_tool_token}"
+        if token != settings.policy_lookup_tool_token and auth != expected:
+            return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    result = lookup_policyholder(
+        settings.policyholder_db_path,
+        name=_optional_str(payload.get("name")),
+        date_of_birth=_optional_str(payload.get("date_of_birth")),
+        phone=_optional_str(payload.get("phone")),
+        policy_number=_optional_str(payload.get("policy_number")),
+        license_plate=_optional_str(payload.get("license_plate")),
+    )
+    return JSONResponse(result)
+
+
+@app.post("/tools/search-claim-context")
+async def search_claim_context_tool(request: Request) -> JSONResponse:
+    settings = load_settings()
+    if settings.tavily_tool_token:
+        token = request.headers.get("X-Tool-Token")
+        auth = request.headers.get("Authorization", "")
+        expected = f"Bearer {settings.tavily_tool_token}"
+        if token != settings.tavily_tool_token and auth != expected:
+            return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    query = str(payload.get("query") or "").strip()
+    location = payload.get("location")
+    incident_time = payload.get("incident_time")
+    result = await asyncio.to_thread(
+        search_claim_context,
+        settings,
+        query=query,
+        location=str(location) if location else None,
+        incident_time=str(incident_time) if incident_time else None,
+    )
+    return JSONResponse(result)
+
+
+def _optional_str(value: Any) -> str | None:
+    text = str(value or "").strip()
+    return text or None
 
 
 async def _read_twilio_form(request: Request) -> dict[str, str]:

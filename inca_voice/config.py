@@ -30,6 +30,15 @@ class Settings:
     elevenlabs_api_key: str | None
     elevenlabs_agent_id: str | None
     elevenlabs_webhook_secret: str | None
+    policyholder_db_path: str
+    policy_lookup_tool_token: str | None
+    scribe_final_model: str
+    scribe_fallback_model: str
+    scribe_final_timeout_secs: float
+    tavily_api_key: str | None
+    tavily_tool_token: str | None
+    tavily_search_url: str
+    tavily_max_results: int
     turn_min_words: int
     turn_min_chars: int
     turn_settle_ms: int
@@ -80,6 +89,15 @@ def load_settings() -> Settings:
         elevenlabs_api_key=_env_first("ELEVENLABS_API_KEY"),
         elevenlabs_agent_id=_env_first("ELEVENLABS_AGENT_ID"),
         elevenlabs_webhook_secret=_env_first("ELEVENLABS_WEBHOOK_SECRET"),
+        policyholder_db_path=_env_first("POLICYHOLDER_DB_PATH", default="data/mock_policyholders.csv") or "data/mock_policyholders.csv",
+        policy_lookup_tool_token=_env_first("POLICY_LOOKUP_TOOL_TOKEN", "ELEVENLABS_TOOL_TOKEN"),
+        scribe_final_model=_env_first("SCRIBE_FINAL_MODEL", default="gemini-2.5-pro") or "gemini-2.5-pro",
+        scribe_fallback_model=_env_first("SCRIBE_FALLBACK_MODEL", default="gemini-2.5-flash") or "gemini-2.5-flash",
+        scribe_final_timeout_secs=_env_float("SCRIBE_FINAL_TIMEOUT_SECS", default=60.0) or 60.0,
+        tavily_api_key=_env_first("TAVILY_API_KEY"),
+        tavily_tool_token=_env_first("TAVILY_TOOL_TOKEN"),
+        tavily_search_url=_env_first("TAVILY_SEARCH_URL", default="https://api.tavily.com/search") or "https://api.tavily.com/search",
+        tavily_max_results=_env_int("TAVILY_MAX_RESULTS", default=3) or 3,
         turn_min_words=_env_int("TURN_MIN_WORDS", default=2) or 2,
         turn_min_chars=_env_int("TURN_MIN_CHARS", default=8) or 8,
         turn_settle_ms=_env_int("TURN_SETTLE_MS", default=700) or 700,

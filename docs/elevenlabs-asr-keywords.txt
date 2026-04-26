@@ -1,0 +1,41 @@
+High-value ASR keywords for the ElevenLabs agent
+
+Use these in ElevenLabs ASR keywords / pronunciation dictionary where available. Keep the list focused; too many generic names can make recognition worse.
+
+Demo policyholder names
+Pragnesh
+Pragnesh Kumar Pallaprolu
+Pallaprolu
+Anna Mueller
+Mehmet Kaya
+Sabine Schneider
+Lukas Weber
+Helga Krueger
+
+German place names and roads
+Alexanderplatz
+Karl-Liebknecht-Strasse
+Rosa-Luxemburg-Strasse
+Prenzlauer Allee
+Sonnenallee
+Schlossstrasse
+A100
+A10
+Charite
+Schwaebisch Hall
+
+German insurance and claim terms
+Schadenfreiheitsklasse
+SF-Klasse
+Selbstbeteiligung
+Werkstattbindung
+Schutzbrief
+Vollkasko
+Teilkasko
+Haftpflicht
+Wildunfall
+Auffahrunfall
+Parkschaden
+Fahrerflucht
+Polizei-Vorgangsnummer
+Gutachter

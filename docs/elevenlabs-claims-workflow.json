@@ -141,7 +141,7 @@
           }
         }
       },
-      "additional_prompt": "Prioritize safety. Ask if they are somewhere safe and whether anyone is hurt. If there is immediate danger or injury, tell them to call emergency services first. Keep questions short. Do not start routine policy intake until they are safe enough to continue.",
+      "additional_prompt": "Prioritize safety. Ask if they are somewhere safe and whether anyone is hurt, but ask each safety question only once unless the caller gives new information suggesting danger or injury. If they say they are safe and nobody is hurt, acknowledge it and move on immediately. If there is immediate danger or injury, tell them to call emergency services first. Keep questions short. Do not start routine policy intake until they are safe enough to continue.",
       "additional_knowledge_base": [],
       "additional_tool_ids": [],
       "auto_advance_after_first_response": false
@@ -163,7 +163,7 @@
           }
         }
       },
-      "additional_prompt": "Softly transition into starting the claim. Ask for policy number, or name and date of birth, or license plate if policy number is unavailable. If a third party is calling, ask their relationship to the policyholder. Keep it natural and brief.",
+      "additional_prompt": "Softly transition into starting the claim. Ask for policy number, or name and date of birth, or license plate if policy number is unavailable. If a third party is calling, ask their relationship to the policyholder. Keep it natural and brief. Before using lookup_policyholder, always say one short stalling phrase such as 'One sec, let me pull that up' or 'Okay, lemme check.' If you need a second to think on a normal non-emergency turn, use a tiny acknowledgement about 70 percent of the time, not every turn.",
       "additional_knowledge_base": [],
       "additional_tool_ids": [],
       "auto_advance_after_first_response": false
@@ -185,7 +185,7 @@
           }
         }
       },
-      "additional_prompt": "Let the caller tell the story in their own words. Ask: 'Tell me what happened, start wherever makes sense.' Use short backchannels. Ask only one clarifying question at a time. Do not sound like a checklist.",
+      "additional_prompt": "Let the caller tell the story in their own words. Ask: 'Tell me what happened, start wherever makes sense.' Use short backchannels. Ask only one clarifying question at a time. Do not sound like a checklist. If the caller gives a long or messy answer and you need a beat, start with a small acknowledgement about 70 percent of the time: 'mhm, okay', 'right', 'yeah, one sec', or 'okay, got it.' Once every few turns at most, a small human repair is allowed: 'wait, sorry, scratch that' or a brief restart. Do not overuse it.",
       "additional_knowledge_base": [],
       "additional_tool_ids": [],
       "auto_advance_after_first_response": false
@@ -207,7 +207,7 @@
           }
         }
       },
-      "additional_prompt": "Ask only missing structured questions. Group related topics: date/time/location, vehicle and damage, injuries, other parties, police, witnesses, photos, drivable/towing, callback details. Skip questions already answered or irrelevant.",
+      "additional_prompt": "Ask only missing structured questions. Group related topics: date/time/location, vehicle and damage, injuries, other parties, police, witnesses, photos, drivable/towing, callback details. Skip questions already answered or irrelevant. If live context would genuinely help, such as weather, roadworks, traffic, closures, or a public event near the loss location, say a short stalling phrase and use search_claim_context at most once or twice. Use lookup_policyholder after the caller gives name/date of birth, policy number, phone, or plate; say a short stalling phrase first. Before every tool call, speak first: 'One sec', 'Okay, lemme check', 'Einen Moment', or similar. On ordinary non-tool thinking pauses, use a tiny acknowledgement roughly 70 percent of the time, then continue with the next useful question. Never use web search for coverage, liability, legal, premium, or policy decisions. Once every few turns at most, a small human repair is allowed: 'wait, sorry, scratch that' or a brief restart. Do not use this in safety triage.",
       "additional_knowledge_base": [],
       "additional_tool_ids": [],
       "auto_advance_after_first_response": false
