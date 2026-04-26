@@ -85,6 +85,10 @@ My name is Pragnesh Kumar Pallaprolu. My date of birth is 26 October 2001.
 
 Stefanie should not sound like a checklist. She should ask short questions, use light backchannels, and avoid repeatedly summarizing every answer.
 
+## Guardrails
+
+The ElevenLabs agent has conversation guardrails configured. If a test call intentionally uses clearly unsafe, abusive, or out-of-scope content, the guardrail may stop the conversation and end the call. That is expected behavior, not a telephony failure.
+
 ## What The Agent Should Collect
 
 Core FNOL facts:
