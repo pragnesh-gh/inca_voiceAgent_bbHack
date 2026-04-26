@@ -6,6 +6,7 @@ Jurors call a real phone number, role-play an accident claimant, and vote blind 
 
 ## Demo
 
+- Video demo: https://www.loom.com/share/8752e4483ce640b79e18c02bed5cebfa
 - Call number: `+49 30 75679047`
 - Agent persona: Stefanie Kühne, Meridian Mutual auto claims
 - Supported caller languages: English and German, including mixed English/German insurance vocabulary

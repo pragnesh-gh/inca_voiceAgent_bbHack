@@ -17,6 +17,12 @@ The demo number can be called from any normal phone number. It is not limited to
 
 ## Quick Test
 
+Video demo:
+
+```text
+https://www.loom.com/share/8752e4483ce640b79e18c02bed5cebfa
+```
+
 Call:
 
 ```text
