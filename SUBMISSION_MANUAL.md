@@ -87,7 +87,19 @@ Stefanie should not sound like a checklist. She should ask short questions, use 
 
 ## Guardrails
 
-The ElevenLabs agent has conversation guardrails configured. If a test call intentionally uses clearly unsafe, abusive, or out-of-scope content, the guardrail may stop the conversation and end the call. That is expected behavior, not a telephony failure.
+The ElevenLabs agent has seven claims-specific guardrails configured. They are part of the demo, not just generic moderation:
+
+- No persona break
+- No sycophantic agreement
+- No fault attribution
+- No bank or IBAN solicitation
+- No repair authorization on call
+- No internal flag disclosure
+- No premium, renewal, or cancellation talk
+
+The strongest guardrails, such as persona break or internal flag disclosure, can end the call immediately when triggered. The other guardrails block the unsafe response and force a retry with corrective guidance, so Stefanie stays in role and does not give legally or operationally risky answers.
+
+If a guardrail intentionally ends a stress-test call, that is expected behavior and not a telephony failure.
 
 ## What The Agent Should Collect
 
