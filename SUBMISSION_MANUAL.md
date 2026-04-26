@@ -2,6 +2,19 @@
 
 This file is for judges and organizers who want to test the INCA Human Test demo.
 
+## Live Availability Note
+
+The phone agent is live through a local webhook server exposed with a stable ngrok HTTPS tunnel. I used this setup because the project needs local server tools for policy lookup, post-call FNOL documentation, and live context lookups, and this was the most reliable way to keep that toolchain working during the hackathon.
+
+During judging, I will keep the laptop, `agent.py`, and ngrok tunnel running. If the number rings but the call does not connect, or if you see a Twilio/ElevenLabs application error, please message:
+
+```text
+Pragnesh Kumar Pallaprolu
+Discord: ppk2086
+```
+
+The demo number can be called from any normal phone number. It is not limited to my own test phone.
+
 ## Quick Test
 
 Call:
