@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import random
 import traceback
 from typing import Any
@@ -20,6 +21,7 @@ from .audio import (
     mulaw_to_pcm16_8k,
     pcm16_duration_ms,
 )
+from .call_context import CallContextStore, start_call_context_enrichment
 from .config import Settings, load_settings
 from .elevenlabs_runtime import (
     build_claim_from_post_call_webhook,
@@ -40,6 +42,7 @@ from .turns import CommittedTurn, TurnManager, TurnSettings
 
 load_dotenv()
 app = FastAPI(title="Inca Twilio Media Streams Agent")
+CALL_CONTEXT_STORE = CallContextStore()
 
 
 OPENINGS = (
@@ -97,6 +100,16 @@ async def twilio_voice(request: Request) -> Response:
                 f"twiml_chars={len(twiml)}",
                 flush=True,
             )
+            try:
+                start_call_context_enrichment(
+                    settings,
+                    store=CALL_CONTEXT_STORE,
+                    call_sid=call_sid,
+                    caller_number=from_number,
+                    called_number=to_number,
+                )
+            except Exception as exc:
+                print(f"Call context enrichment scheduling failed; continuing call: {exc}", flush=True)
             return Response(content=twiml, media_type="application/xml")
         except Exception as exc:
             print(f"ElevenLabs register_call failed; falling back to local Twilio stream: {exc}", flush=True)
@@ -183,6 +196,26 @@ async def search_claim_context_tool(request: Request) -> JSONResponse:
         incident_time=str(incident_time) if incident_time else None,
     )
     return JSONResponse(result)
+
+
+@app.post("/tools/get-call-context")
+async def get_call_context_tool(request: Request) -> JSONResponse:
+    token = request.headers.get("X-Tool-Token")
+    auth = request.headers.get("Authorization", "")
+    expected_token = _optional_str(os.environ.get("CALL_CONTEXT_TOOL_TOKEN"))
+    if expected_token and token != expected_token and auth != f"Bearer {expected_token}":
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    call_sid = (
+        payload.get("twilio_call_sid")
+        or payload.get("system__call_sid")
+        or payload.get("call_sid")
+        or payload.get("conversation_id")
+    )
+    return JSONResponse(CALL_CONTEXT_STORE.get_tool_response(_optional_str(call_sid)))
 
 
 def _optional_str(value: Any) -> str | None:

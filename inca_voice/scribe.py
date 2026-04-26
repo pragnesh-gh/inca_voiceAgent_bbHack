@@ -189,7 +189,7 @@ class ClaimsScribe:
     def _heuristic_update(self, turn: dict[str, Any]) -> None:
         text = turn["text"]
         lower = text.lower()
-        if any(word in lower for word in ("hurt", "injured", "ambulance", "hospital", "112", "safe", "verletzt", "krankenhaus")):
+        if any(word in lower for word in ("hurt", "injured", "ambulance", "hospital", "112", "safe", "back home", "verletzt", "krankenhaus")):
             self._add_fact("Safety", text, turn["id"])
             self._infer_safety_fields(lower, text, turn["id"])
         if any(word in lower for word in ("my name", "i am", "ich bin", "policy", "police number", "phone number", "callback")):
@@ -198,24 +198,28 @@ class ClaimsScribe:
         if any(word in lower for word in ("policy", "versicherung", "kasko", "vollkasko", "teilkasko", "haftpflicht", "selbstbeteiligung")):
             self._add_fact("Policy", text, turn["id"])
             self._infer_policy_fields(text, turn["id"])
-        if any(word in lower for word in ("crash", "accident", "collision", "hit", "deer", "theft", "stolen", "unfall", "gekracht")):
+        if any(word in lower for word in ("crash", "accident", "collision", "hit", "deer", "theft", "stolen", "unfall", "gekracht", "happened today", "around", "drivable", "drive", "tow", "towed", "garage", "raining", "road was wet")):
             self._add_fact("Loss", text, turn["id"])
-            self._set_field("Loss", "summary", text, 0.45, turn["id"])
+            self._set_loss_summary(text, turn["id"])
             self._infer_loss_fields(text, lower, turn["id"])
-        if any(word in lower for word in ("family", "passenger", "driver", "police", "witness", "familie", "polizei")):
+        if any(word in lower for word in ("family", "passenger", "driver", "police", "witness", "familie", "polizei", "mercedes", "from behind", "his name was", "her name was", "plate was", "exchanged details")):
             self._add_fact("People", text, turn["id"])
             self._infer_people_fields(lower, text, turn["id"])
         if any(word in lower for word in ("police", "polizei", "case number", "report number", "aktenzeichen")):
             self._add_fact("Police", text, turn["id"])
-            if any(phrase in lower for phrase in ("no police", "police not", "didn't call police", "keine polizei", "polizei nicht")):
+            if any(phrase in lower for phrase in ("no police", "police not", "police were not called", "police was not called", "police not called", "didn't call police", "did not call police", "not called police", "keine polizei", "polizei nicht")):
                 self._set_field("Police", "called", False, 0.55, turn["id"])
             else:
                 self._set_field("Police", "called", True, 0.5, turn["id"])
         if any(word in lower for word in ("witness", "witnesses", "zeuge", "zeugen")):
             self._add_fact("Witnesses", text, turn["id"])
-        if any(word in lower for word in ("car", "vehicle", "plate", "license", "vin", "auto", "kennzeichen")):
+        if any(word in lower for word in ("car", "vehicle", "plate", "license", "vin", "auto", "kennzeichen", "damage", "damaged", "bumper", "sensor", "sensors", "rear", "front", "garage", "warning sound")):
             self._add_fact("Vehicles", text, turn["id"])
             self._infer_vehicle_fields(text, lower, turn["id"])
+        if any(word in lower for word in ("photo", "photos", "picture", "pictures", "bilder", "foto", "fotos")):
+            self._add_fact("Evidence", text, turn["id"])
+            if any(phrase in lower for phrase in ("take photos", "took photos", "did take photos", "have photos", "took pictures")):
+                self._set_field("Evidence", "photos_available", True, 0.6, turn["id"])
         if re.search(r"\b[A-Z]{1,3}[- ]?[A-Z]{1,3}[- ]?\d{2,4}\b", text):
             self._add_fact("Vehicles", f"Possible plate or policy detail: {text}", turn["id"])
             self._set_field("Vehicles", "insured_plate", text, 0.4, turn["id"])
@@ -235,13 +239,21 @@ class ClaimsScribe:
         if current["value"] in (None, "", []):
             self.state[section]["fields"][slot] = field(value, confidence, [turn_id])
 
+    def _set_loss_summary(self, text: str, turn_id: int) -> None:
+        summary_field = self.state["Loss"]["fields"]["summary"]
+        section_summary = self.state["Loss"]["summary"]
+        current = str(summary_field.get("value") or section_summary.get("value") or "")
+        if not current or _summary_score(text) > _summary_score(current):
+            self.state["Loss"]["fields"]["summary"] = field(text, 0.5, [turn_id])
+            self.state["Loss"]["summary"] = field(text, 0.5, [turn_id])
+
     def _infer_safety_fields(self, lower: str, text: str, turn_id: int) -> None:
         if any(phrase in lower for phrase in ("not safe", "unsafe", "danger", "on the highway", "auf der autobahn")):
             self._set_field("Safety", "safe_location", False, 0.55, turn_id)
             self._set_field("Safety", "roadside_danger", True, 0.55, turn_id)
-        if any(phrase in lower for phrase in ("i am safe", "we are safe", "somewhere safe", "safe now", "bin sicher", "sind sicher")):
+        if any(phrase in lower for phrase in ("i am safe", "i'm safe", "im safe", "we are safe", "somewhere safe", "safe now", "back home", "bin sicher", "sind sicher")):
             self._set_field("Safety", "safe_location", True, 0.55, turn_id)
-        if any(phrase in lower for phrase in ("no one is hurt", "nobody is hurt", "no injuries", "nicht verletzt", "niemand verletzt")):
+        if any(phrase in lower for phrase in ("no one is hurt", "no one was hurt", "no one hurt", "nobody is hurt", "nobody was hurt", "no injuries", "not hurt", "no one injured", "no one was injured", "nicht verletzt", "niemand verletzt")):
             self._set_field("Safety", "injuries_reported", False, 0.6, turn_id)
         elif any(word in lower for word in ("hurt", "injured", "ambulance", "hospital", "verletzt", "krankenhaus")):
             self._set_field("Safety", "injuries_reported", True, 0.55, turn_id)
@@ -279,30 +291,42 @@ class ClaimsScribe:
             if any(term in lower for term in terms):
                 self._set_field("Loss", "loss_type", label, 0.5, turn_id)
                 break
+        if re.search(r"\btoday\b", lower):
+            self._set_field("Loss", "date", "today", 0.55, turn_id)
+        if re.search(r"\byesterday\b", lower):
+            self._set_field("Loss", "date", "yesterday", 0.5, turn_id)
+        time_value = _extract_loss_time(text)
+        if time_value:
+            self._set_field("Loss", "time", time_value, 0.55, turn_id)
+        if "rain" in lower:
+            self._set_field("Loss", "weather", "rain", 0.5, turn_id)
+        if "wet" in lower and ("road" in lower or "street" in lower):
+            self._set_field("Loss", "road_conditions", "wet road", 0.5, turn_id)
         if any(phrase in lower for phrase in ("not drivable", "can't drive", "cannot drive", "tow", "towed", "nicht fahrbereit", "abschlepp")):
             self._set_field("Loss", "drivable", False, 0.55, turn_id)
             if "tow" in lower or "abschlepp" in lower:
                 self._set_field("Loss", "tow_needed", True, 0.5, turn_id)
         if any(phrase in lower for phrase in ("still drives", "drivable", "can drive", "fahrbereit")):
             self._set_field("Loss", "drivable", True, 0.5, turn_id)
-        location = re.search(r"\b(?:at|on|near|in|bei|auf|an)\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß0-9 .'-]{2,80})", text)
+        location = _extract_loss_location(text)
         if location:
-            self._set_field("Loss", "location", location.group(1).strip(), 0.35, turn_id)
+            self._set_field("Loss", "location", location, 0.45, turn_id)
 
     def _infer_people_fields(self, lower: str, text: str, turn_id: int) -> None:
         if "family" in lower or "passenger" in lower or "familie" in lower:
             self._set_field("People", "passengers", text, 0.45, turn_id)
-        if any(phrase in lower for phrase in ("other car", "other driver", "third party", "anderes auto", "gegner")):
+        if any(phrase in lower for phrase in ("other car", "other driver", "third party", "anderes auto", "gegner", "mercedes", "hit me from behind", "hit from behind", "his name was", "her name was", "exchanged details")):
             self._set_field("People", "other_party_involved", True, 0.5, turn_id)
+            self._set_field("People", "other_driver_details", text, 0.45, turn_id)
         if any(phrase in lower for phrase in ("no other", "nobody else", "kein anderer")):
             self._set_field("People", "other_party_involved", False, 0.5, turn_id)
         if any(word in lower for word in ("hurt", "injured", "hospital", "verletzt", "krankenhaus")):
             self._set_field("People", "injury_details", text, 0.45, turn_id)
 
     def _infer_vehicle_fields(self, text: str, lower: str, turn_id: int) -> None:
-        if any(word in lower for word in ("damage", "bumper", "door", "front", "rear", "windshield", "schaden", "stoßstange")):
+        if any(word in lower for word in ("damage", "damaged", "bumper", "sensor", "sensors", "door", "front", "rear", "back", "windshield", "warning sound", "schaden", "stoßstange")):
             self._set_field("Vehicles", "damage_description", text, 0.45, turn_id)
-        if any(phrase in lower for phrase in ("car is at", "vehicle is at", "auto steht", "car is still", "vehicle is still")):
+        if any(phrase in lower for phrase in ("car is at", "vehicle is at", "auto steht", "car is still", "vehicle is still", "at the garage", "in the garage", "with me", "at home")):
             self._set_field("Vehicles", "current_vehicle_location", text, 0.4, turn_id)
 
     def _finalize_quality(self) -> dict[str, Any]:
@@ -456,6 +480,27 @@ def _executive_summary(state: dict[str, Any]) -> str:
     return " ".join(pieces)
 
 
+def _summary_score(text: str) -> int:
+    lower = text.lower()
+    markers = (
+        "happened",
+        "today",
+        "around",
+        "hit",
+        "from behind",
+        "mercedes",
+        "raining",
+        "wet",
+        "damage",
+        "damaged",
+        "bumper",
+        "drivable",
+        "police",
+        "garage",
+    )
+    return min(len(text), 180) + 25 * sum(1 for marker in markers if marker in lower)
+
+
 def _captured_fields(fields: dict[str, Any]) -> list[str]:
     rows = []
     for name, data in fields.items():
@@ -499,6 +544,44 @@ def _extract_birth_date(text: str) -> str | None:
             return f"{month_first.group(3)}-{month}-{int(month_first.group(2)):02d}"
     iso = re.search(r"\b(\d{4})-(\d{2})-(\d{2})\b", text)
     return iso.group(0) if iso else None
+
+
+def _extract_loss_time(text: str) -> str | None:
+    match = re.search(
+        r"\b(?:around|about|at|um|gegen)?\s*(\d{1,2})[:.](\d{2})\s*(?:in the\s+)?(morning|afternoon|evening|night|a\.?m\.?|p\.?m\.?)?\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+    hour = int(match.group(1))
+    minute = int(match.group(2))
+    marker = (match.group(3) or "").lower()
+    if marker in ("p.m.", "pm", "afternoon", "evening", "night") and hour < 12:
+        hour += 12
+    if marker in ("a.m.", "am", "morning") and hour == 12:
+        hour = 0
+    if hour > 23 or minute > 59:
+        return None
+    return f"{hour:02d}:{minute:02d}"
+
+
+def _extract_loss_location(text: str) -> str | None:
+    match = re.search(
+        r"\b(?:at|on|near|bei|auf|an)\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß0-9 .'-]{2,80}?)(?=\.|,|\s+and\b|\s+but\b|\s+because\b|$)",
+        text,
+    )
+    if not match:
+        match = re.search(
+            r"\bin\s+([A-ZÄÖÜ][A-Za-zÄÖÜäöüß0-9 .'-]{2,80}?)(?=\.|,|\s+and\b|\s+but\b|\s+because\b|$)",
+            text,
+        )
+    if not match:
+        return None
+    location = match.group(1).strip(" .,")
+    location = re.sub(r"\s+", " ", location)
+    location = re.sub(r"\s+(and|but|because)\b.*$", "", location, flags=re.IGNORECASE).strip(" .,")
+    return location or None
 
 
 def _read_tool_log(trace: Any) -> str:

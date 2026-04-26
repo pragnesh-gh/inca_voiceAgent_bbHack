@@ -28,7 +28,7 @@ def lookup_policyholder(
         )
         if score > 0 and (best is None or score > best[0]):
             best = (score, record, reasons)
-    if not best or best[0] < 2:
+    if not best or best[0] < 4:
         return {"ok": True, "matched": False, "match_confidence": 0.0, "policyholder": None}
     score, record, reasons = best
     return {
@@ -120,6 +120,15 @@ def public_policyholder(record: dict[str, str]) -> dict[str, str]:
         "sf_class_liability": record.get("sf_class_liability", ""),
         "sf_class_vollkasko": record.get("sf_class_vollkasko", ""),
         "policy_status": record.get("policy_status", ""),
+        "occupation": record.get("occupation", ""),
+        "university": record.get("university", ""),
+        "education_program": record.get("education_program", ""),
+        "nationality": record.get("nationality", ""),
+        "eu_status": record.get("eu_status", ""),
+        "country_of_origin": record.get("country_of_origin", ""),
+        "residence_status": record.get("residence_status", ""),
+        "residence_permit_type": record.get("residence_permit_type", ""),
+        "residence_permit_valid_until": record.get("residence_permit_valid_until", ""),
     }
 
 
@@ -180,16 +189,30 @@ def _deductible_text(record: dict[str, str]) -> str:
 
 
 def _extract_name(text: str) -> str | None:
-    match = re.search(r"\b(?:my name is|i am|i'm|ich bin)\s+([A-Za-zÄÖÜäöüß .'-]{2,80})", text, re.IGNORECASE)
-    if not match:
-        return None
-    name = re.split(
-        r"\b(?:and|und|born|geboren|date of birth|dob|birthday)\b",
-        match.group(1),
-        maxsplit=1,
-        flags=re.IGNORECASE,
-    )[0]
-    return name.strip(" .,-")
+    patterns = (
+        (r"\b(?:my name is|mein name ist)\s+([A-Za-zÄÖÜäöüß .'-]{2,80})", True),
+        (r"\b(?:i am|i'm|ich bin)\s+([A-Za-zÄÖÜäöüß .'-]{2,80})", False),
+    )
+    for pattern, allow_single in patterns:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            name = re.split(
+                r"\b(?:and|und|born|geboren|date of birth|dob|birthday)\b|[,\n.;]",
+                match.group(1),
+                maxsplit=1,
+                flags=re.IGNORECASE,
+            )[0].strip(" .,-")
+            if _looks_like_person_name(name, allow_single=allow_single):
+                return name
+    return None
+
+
+def _looks_like_person_name(name: str, *, allow_single: bool) -> bool:
+    words = [normalize(part) for part in name.split() if len(normalize(part)) > 1]
+    if not words:
+        return False
+    if words[0] in {"here", "calling", "safe", "fine", "back", "just", "actually", "trying", "looking", "report"}:
+        return False
+    return allow_single or len(words) >= 2
 
 
 def _extract_birth_date(text: str) -> str | None:
@@ -208,6 +231,11 @@ def _extract_birth_date(text: str) -> str | None:
         "december": "12", "dec": "12", "dezember": "12", "dez": "12",
     }
     match = re.search(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([A-Za-zÄÖÜäöüß]+),?\s+(\d{4})", text, re.IGNORECASE)
+    if match:
+        month = months.get(match.group(2).casefold())
+        if month:
+            return f"{match.group(3)}-{month}-{int(match.group(1)):02d}"
+    match = re.search(r"\b(\d{1,2})\.\s*([A-Za-zÃ„Ã–ÃœÃ¤Ã¶Ã¼ÃŸ]+)\s+(\d{4})", text, re.IGNORECASE)
     if match:
         month = months.get(match.group(2).casefold())
         if month:

@@ -55,8 +55,27 @@ Configure the ElevenLabs agent in the dashboard with:
 - Knowledge base containing policy/FNOL/German insurance notes.
 - Server tool `lookup_policyholder` attached to Orientation and Gap Fill for deterministic mock policy lookup.
 - Server tool `search_claim_context` attached only if `TAVILY_API_KEY` is set and the public webhook URL is stable.
+- Server tool `get_call_context` attached to Gap Fill for non-blocking background context already fetched for this Twilio call.
 
 Do not rely on Knowledge Base alone for policyholder lookup. Knowledge Base is useful for general FNOL guidance and German insurance vocabulary, but caller identity and policy details should come from the webhook tool backed by `data/mock_policyholders.csv`.
+
+## Per-call Dynamic Variables
+
+The Twilio webhook passes these variables to ElevenLabs at call registration time:
+
+```text
+caller_number
+called_number
+twilio_call_sid
+agent_name
+local_time_de
+weekday_de
+caller_area_hint
+agent_shift_anchor
+context_priming_rule
+```
+
+Use `{{agent_shift_anchor}}` at most once, only if it naturally fits and never during emergency triage. These anchors are intentionally harmless mood/context lines, not factual claims about the incident.
 
 ## Pause Realism Settings
 
@@ -155,6 +174,39 @@ python scripts\create_elevenlabs_tavily_tool.py --apply
 ```
 
 The script prints the created tool ID. Attach that tool to the Stefanie agent or only to the Gap Fill workflow node.
+
+## Async Call Context Tool
+
+The call answers immediately. Background context enrichment runs after successful ElevenLabs registration and stores cached context by Twilio call SID. The agent can retrieve it later only if useful.
+
+Local webhook:
+
+```text
+POST https://PUBLIC_HOST/tools/get-call-context
+```
+
+Body:
+
+```json
+{
+  "twilio_call_sid": "{{twilio_call_sid}}"
+}
+```
+
+Optional header if `CALL_CONTEXT_TOOL_TOKEN` is set:
+
+```text
+X-Tool-Token: <token>
+```
+
+Create the ElevenLabs tool from local config with:
+
+```powershell
+python scripts\create_elevenlabs_call_context_tool.py
+python scripts\create_elevenlabs_call_context_tool.py --apply
+```
+
+Attach it to **Gap Fill**. Configure the `twilio_call_sid` parameter from `{{twilio_call_sid}}` or ElevenLabs' system call SID if available. Stefanie must say a short stalling phrase before using it. If the tool returns `still_checking=true`, she should continue with the caller's own description.
 
 ## Post-call Artifacts
 

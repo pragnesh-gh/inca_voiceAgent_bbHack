@@ -6,6 +6,7 @@ from typing import Any
 
 from elevenlabs import ElevenLabs
 
+from .call_context import build_call_dynamic_variables
 from .config import Settings
 from .fnol_artifacts import fnol_document_from_state, write_shareable_artifacts
 from .policy_lookup import apply_policyholder_match, find_policyholder_in_text
@@ -36,12 +37,11 @@ def register_elevenlabs_call(
         to_number=to_number,
         direction="inbound",
         conversation_initiation_client_data={
-            "dynamic_variables": {
-                "caller_number": from_number,
-                "called_number": to_number,
-                "twilio_call_sid": call_sid,
-                "agent_name": "Stefanie",
-            }
+            "dynamic_variables": build_call_dynamic_variables(
+                from_number=from_number,
+                to_number=to_number,
+                call_sid=call_sid,
+            )
         },
     )
 
